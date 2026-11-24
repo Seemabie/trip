@@ -298,13 +298,14 @@ const QZ=[
  ["Which road is Hawk's Nest on?",['New York Route 97','New Jersey Route 23','Route 84'],0,'New York Route 97, part of the 70 mile Upper Delaware Scenic Byway.'],
  ['What can you spot from Point Peter in Port Jervis?',['The Statue of Liberty','High Point Monument','The George Washington Bridge'],1,'High Point Monument on the ridge, plus Port Jervis and the Delaware River.']
 ];
-const DEF={at:0,max:0,punched:false,pl:false,names:`${ME}, ${CO}, Crew 1, Crew 2`,crew:null,tour:false,sel:-1,order:[],climb:0,fog:[],rain:null,camp:false,gd:null,hawk:false,peter:false,walk:false,bring:false,quiz:{},qi:0};
+const DEF={at:0,max:0,punched:false,pl:false,names:`${ME}, ${CO}, Kona, Arbaz`,crew:null,tour:false,sel:-1,order:[],climb:0,fog:[],rain:null,camp:false,gd:null,hawk:false,peter:false,walk:false,bring:false,quiz:{},qi:0};
 let st;
 try{st=Object.assign({},DEF,JSON.parse(localStorage.getItem('tg26z')||'{}'))}catch(e){st=Object.assign({},DEF)}
 for(const k of ['order','fog'])if(!Array.isArray(st[k]))st[k]=[];
 if(!st.quiz||typeof st.quiz!=='object')st.quiz={};
 if(Array.isArray(st.crew))st.crew=ordered(st.crew.map((c,i)=>[c[0],c[1]===-1?-1:String(c[0]).toLowerCase()===CO.toLowerCase()?-2:(c[1]>=0&&c[1]<7?c[1]:0)]));
-if(st.names===`${ME}, Crew 1, ${CO}, Crew 3`)st.names=DEF.names;
+if([`${ME}, Crew 1, ${CO}, Crew 3`,`${ME}, ${CO}, Crew 1, Crew 2`,`Me, Crew 1, Crew 2, Crew 3`].includes(st.names))st.names=DEF.names;
+if(Array.isArray(st.crew))st.crew=st.crew.map(c=>[({'Crew 1':'Kona','Crew 2':'Arbaz','Crew 3':'Arbaz'})[c[0]]||c[0],c[1]]);
 const save=()=>{try{localStorage.setItem('tg26z',JSON.stringify(st))}catch(e){}};
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const view=i=>{const s=S[i],r=st.rain===true&&s.rain?s.rain:{};return{...s,name:r.name||s.name,body:r.body||s.body,tip:r.tip||s.tip}};
