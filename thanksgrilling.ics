@@ -1,0 +1,113 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Thanksgrilling//Trip//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Thanksgrilling
+BEGIN:VEVENT
+UID:thanksgrilling-2026-0@trip
+DTSTAMP:20261124T160429Z
+DTSTART:20261126T020000Z
+DTEND:20261126T021500Z
+SUMMARY:Thanksgrilling tomorrow
+LOCATION:Dera Restaurant\, 72-09 Broadway\, Jackson Heights\, NY 11372
+DESCRIPTION:Meet outside Dera at 8 AM sharp. Bring chai\, warm clothes\, f
+ un and a smile. Seemab and Tuhin have the rest.
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Thanksgrilling tomorrow
+TRIGGER:PT0M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:thanksgrilling-2026-1@trip
+DTSTAMP:20261124T160429Z
+DTSTART:20261126T130000Z
+DTEND:20261126T134500Z
+SUMMARY:Meet at Dera and roll out
+LOCATION:Dera Restaurant\, 72-09 Broadway\, Jackson Heights\, NY 11372
+DESCRIPTION:Curbside meetup at 8 sharp. Seemab's one rule: be on time.
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Meet at Dera and roll out
+TRIGGER:-PT60M
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Meet at Dera and roll out
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:thanksgrilling-2026-2@trip
+DTSTAMP:20261124T160429Z
+DTSTART:20261126T140000Z
+DTEND:20261126T150000Z
+SUMMARY:Breakfast at Dosa House
+LOCATION:Sri Ganesh Dosa House\, 809 Newark Ave\, Jersey City\, NJ 07306
+DESCRIPTION:Dosas\, sambar and chutney in Journal Square.
+END:VEVENT
+BEGIN:VEVENT
+UID:thanksgrilling-2026-3@trip
+DTSTAMP:20261124T160429Z
+DTSTART:20261126T150000Z
+DTEND:20261126T163000Z
+SUMMARY:Drive to High Point
+LOCATION:High Point State Park\, Sussex\, NJ
+DESCRIPTION:Route 280 West\, Route 80 West\, then Route 23 North.
+END:VEVENT
+BEGIN:VEVENT
+UID:thanksgrilling-2026-4@trip
+DTSTAMP:20261124T160429Z
+DTSTART:20261126T163000Z
+DTEND:20261126T171500Z
+SUMMARY:High Point Monument
+LOCATION:High Point Monument\, Sussex\, NJ
+DESCRIPTION:The highest point in New Jersey\, 1\,803 feet.
+END:VEVENT
+BEGIN:VEVENT
+UID:thanksgrilling-2026-5@trip
+DTSTAMP:20261124T160429Z
+DTSTART:20261126T171500Z
+DTEND:20261126T184500Z
+SUMMARY:Steak BBQ and chai at Lake Marcia
+LOCATION:Lake Marcia\, High Point State Park\, NJ
+DESCRIPTION:Chai first\, then Seemab fires up the rib eyes.
+END:VEVENT
+BEGIN:VEVENT
+UID:thanksgrilling-2026-6@trip
+DTSTAMP:20261124T160429Z
+DTSTART:20261126T184500Z
+DTEND:20261126T193000Z
+SUMMARY:Hawk's Nest\, Route 97
+LOCATION:Hawks Nest\, NY Route 97\, Sparrow Bush\, NY
+DESCRIPTION:Cliffside S curves above the Delaware River.
+END:VEVENT
+BEGIN:VEVENT
+UID:thanksgrilling-2026-7@trip
+DTSTAMP:20261124T160429Z
+DTSTART:20261126T193000Z
+DTEND:20261126T200000Z
+SUMMARY:Point Peter overlook
+LOCATION:Elks Brox Memorial Park\, Port Jervis\, NY
+DESCRIPTION:View over Port Jervis and the Delaware.
+END:VEVENT
+BEGIN:VEVENT
+UID:thanksgrilling-2026-8@trip
+DTSTAMP:20261124T160429Z
+DTSTART:20261126T200000Z
+DTEND:20261126T202000Z
+SUMMARY:Tri States Monument
+LOCATION:Tri-States Monument\, Port Jervis\, NY
+DESCRIPTION:Stand in New York\, New Jersey and Pennsylvania at once.
+END:VEVENT
+BEGIN:VEVENT
+UID:thanksgrilling-2026-9@trip
+DTSTAMP:20261124T160429Z
+DTSTART:20261126T202000Z
+DTEND:20261126T221500Z
+SUMMARY:Drive home to Dera
+LOCATION:Dera Restaurant\, 72-09 Broadway\, Jackson Heights\, NY 11372
+DESCRIPTION:Route 84 East. Whoever grilled picks the music.
+END:VEVENT
+END:VCALENDAR

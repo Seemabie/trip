@@ -70,6 +70,9 @@ button{cursor:pointer}
 .pp{background:var(--panel);border:1px solid var(--edge);border-radius:18px;padding:16px}
 .pp h3{font-size:20px;margin-bottom:8px}
 .cta{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
+.cal{margin-top:14px}
+.cal .note{margin-top:0}
+.cal .cta{margin-top:8px}
 .toast{position:fixed;left:50%;bottom:104px;transform:translate(-50%,16px);opacity:0;background:var(--paper);color:var(--pink);padding:12px 18px;border-radius:14px;font-weight:800;width:max-content;max-width:min(92vw,480px);text-align:center;transition:.25s;pointer-events:none;z-index:9;box-shadow:0 10px 30px rgba(0,0,0,.35)}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 .split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:center}
@@ -248,7 +251,7 @@ svg text{font-family:Overpass,system-ui,sans-serif;font-weight:800}
 </head>
 <body>
 <div class="app">
- <header class="hd"><button class="ib0" id="back" aria-label="Previous chapter">‹</button><div class="tt"><span id="kick"></span><b id="ttl"></b></div><span class="brand">Thanksgrilling</span></header>
+ <header class="hd"><button class="ib0" id="back" aria-label="Previous chapter">‹</button><div class="tt"><span id="kick"></span><b id="ttl"></b></div><button class="ib0" id="snd" aria-label="Sound on" aria-pressed="true"></button><span class="brand">Thanksgrilling</span></header>
  <nav class="bar" id="bar" aria-label="Chapters"></nav>
  <div class="tasks" id="tasks" aria-live="polite"></div>
  <main class="stage" id="stage"></main>
@@ -279,6 +282,9 @@ const S=[
  {t:900,time:'3:00',ap:'PM',short:'Tri States',name:'Tri States Monument',place:'Laurel Grove Cemetery, Port Jervis',q:'Tri-States Monument, Port Jervis, NY',x:.85,y:.7,lb:'b',body:'Stand in New York, New Jersey and Pennsylvania at once, at the point under the Route 84 bridge.',tip:'The last few feet are steep and rocky.'},
  {t:920,time:'3:20',ap:'PM',short:'Home',name:'Home stretch',place:'Back at Dera around 5:15 PM',q:'Dera Restaurant, 72-09 Broadway, Jackson Heights, NY',roads:[['i','84']],x:.95,y:.8,lb:'t',body:'Route 84 East back to Jackson Heights with the heater on and the playlist up. Every scenic stop wraps up before sunset at about 4:32.',tip:'Whoever grilled picks the music.',rain:{tip:'Rib eyes on the grill at home tonight.'}}
 ];
+const ICS='thanksgrilling.ics';
+const GCAL='https://calendar.google.com/calendar/render?action=TEMPLATE&text='+enc('Thanksgrilling at High Point')+'&dates=20261126T130000Z/20261126T221500Z&location='+enc('Dera Restaurant, 72-09 Broadway, Jackson Heights, NY')+'&details='+enc(S.map(s=>`${s.time} ${s.ap}  ${s.name}`).join('\n')+'\n\nBring chai, warm clothes, fun and a smile.');
+const calBlock=()=>`<div class="cal"><p class="note">Put Thursday in your calendar. The iPhone version alerts you the night before and at 7 and 7:30 AM. Google Calendar uses your usual reminder.</p><div class="cta"><a class="btn gh" href="${ICS}">Add to iPhone calendar</a><a class="btn gh" href="${esc(GCAL)}" target="_blank" rel="noopener">Add to Google Calendar</a></div></div>`;
 const LEGS=[
  ['Morning route','Dera, Dosa House, High Point',dir('Dera Restaurant, 72-09 Broadway, Jackson Heights, NY','High Point Monument, Sussex, NJ',['Sri Ganesh Dosa House, 809 Newark Ave, Jersey City, NJ'])],
  ['Afternoon route',"Lake Marcia, Hawk's Nest, Point Peter, Tri States",dir('High Point Monument, Sussex, NJ','Tri-States Monument, Port Jervis, NY',['Lake Marcia, High Point State Park, NJ','41.417758,-74.73489','Elks Brox Memorial Park, Port Jervis, NY'])],
@@ -316,7 +322,37 @@ const rng=seed=>{let s=seed;return()=>(s=s*16807%2147483647)/2147483647};
 let cleanup=[],timers=[];
 const later=(f,ms)=>{const t=setTimeout(f,ms);timers.push(t);return t};
 const stage=$('#stage');
-const done=msg=>{refresh();toast(msg||'Done. Tap Next.')};
+/* sound effects, synthesized live, no files */
+const SND=(()=>{let ac=null,on=true;try{on=localStorage.getItem('tg-snd')!=='0'}catch(e){}
+ const ctx=()=>{if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){return null}}if(ac.state==='suspended'){try{ac.resume()}catch(e){}}return ac};
+ const env=(a,g,t,v,d)=>{g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+d)};
+ const tone=(f,d,o={})=>{const a=ctx();if(!a||!on)return;const t=a.currentTime+(o.t0||0),os=a.createOscillator(),g=a.createGain();os.type=o.type||'sine';os.frequency.setValueAtTime(f,t);if(o.slide)os.frequency.exponentialRampToValueAtTime(o.slide,t+d);env(a,g,t,o.vol||.15,d);os.connect(g);g.connect(a.destination);os.start(t);os.stop(t+d+.05)};
+ const noise=(d,o={})=>{const a=ctx();if(!a||!on)return;const t=a.currentTime+(o.t0||0),n=Math.max(1,Math.floor(a.sampleRate*d)),buf=a.createBuffer(1,n,a.sampleRate),ch=buf.getChannelData(0);for(let i=0;i<n;i++)ch[i]=Math.random()*2-1;const src=a.createBufferSource(),f=a.createBiquadFilter(),g=a.createGain();src.buffer=buf;f.type=o.type||'bandpass';f.frequency.setValueAtTime(o.freq||1200,t);if(o.slide)f.frequency.exponentialRampToValueAtTime(o.slide,t+d);f.Q.value=o.q||1;env(a,g,t,o.vol||.15,d);src.connect(f);f.connect(g);g.connect(a.destination);src.start(t);src.stop(t+d+.05)};
+ const engine=d=>{const a=ctx();if(!a||!on)return;const t=a.currentTime,os=a.createOscillator(),f=a.createBiquadFilter(),g=a.createGain();os.type='sawtooth';os.frequency.setValueAtTime(55,t);os.frequency.linearRampToValueAtTime(95,t+d*.4);os.frequency.linearRampToValueAtTime(80,t+d);f.type='lowpass';f.frequency.value=380;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.09,t+.25);g.gain.setValueAtTime(.09,t+Math.max(.3,d-.4));g.gain.exponentialRampToValueAtTime(.0001,t+d);os.connect(f);f.connect(g);g.connect(a.destination);os.start(t);os.stop(t+d+.05)};
+ const fx={
+  tap:()=>tone(660,.07,{type:'triangle',vol:.1}),
+  pop:()=>tone(520,.1,{type:'sine',vol:.18,slide:980}),
+  next:()=>noise(.32,{vol:.1,freq:500,slide:2600,q:.8}),
+  back:()=>noise(.28,{vol:.08,freq:2400,slide:500,q:.8}),
+  nope:()=>{tone(220,.09,{type:'square',vol:.05});tone(180,.12,{type:'square',vol:.05,t0:.1})},
+  done:()=>[523.3,659.3,784].forEach((f,i)=>tone(f,.28,{type:'triangle',vol:.13,t0:.05+i*.09})),
+  punch:()=>{noise(.07,{vol:.35,freq:3200,type:'highpass'});tone(160,.09,{type:'square',vol:.08})},
+  flip:()=>noise(.13,{vol:.13,freq:2600,slide:700,q:.7}),
+  vinyl:()=>{noise(.25,{vol:.12,freq:1800,slide:600,q:3});[392,494,587].forEach((f,i)=>tone(f,.35,{type:'triangle',vol:.1,t0:.25+i*.12}))},
+  poof:()=>noise(.45,{vol:.22,freq:1400,slide:180,type:'lowpass'}),
+  rain:()=>noise(1.4,{vol:.09,freq:2400,q:.4}),
+  sizzle:()=>noise(.9,{vol:.11,freq:5200,type:'highpass'}),
+  shutter:()=>{noise(.05,{vol:.4,freq:4200,type:'highpass'});noise(.06,{vol:.3,freq:2600,type:'highpass',t0:.09})},
+  step:()=>tone(150,.07,{type:'sine',vol:.2,slide:90}),
+  right:()=>{tone(784,.12,{type:'triangle',vol:.14});tone(1046.5,.22,{type:'triangle',vol:.14,t0:.1})},
+  wrong:()=>tone(240,.3,{type:'sawtooth',vol:.06,slide:150}),
+  fanfare:()=>{[523.3,659.3,784,1046.5].forEach((f,i)=>tone(f,.22,{type:'triangle',vol:.13,t0:i*.11}));[523.3,659.3,784].forEach(f=>tone(f,.9,{type:'triangle',vol:.08,t0:.5}))},
+  engine
+ };
+ return{fx,unlock:ctx,get on(){return on},toggle(){on=!on;try{localStorage.setItem('tg-snd',on?'1':'0')}catch(e){}if(on)ctx();return on}};
+})();
+const sfx=(k,a)=>{try{SND.fx[k]&&SND.fx[k](a)}catch(e){}};
+const done=msg=>{refresh();sfx('done');toast(msg||'Done. Tap Next.')};
 /* moves a car along a path */
 function mover(road,car,o={}){const L=road.getTotalLength();let cur=0,raf=0;
  const at=len=>{cur=len;const p=road.getPointAtLength(len),q=road.getPointAtLength(Math.min(L,len+2));car.setAttribute('transform',`translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) rotate(${(Math.atan2(q.y-p.y,q.x-p.x)*180/Math.PI+(o.flip?180:0)).toFixed(1)}) scale(${o.scale||1})`)};
@@ -327,9 +363,9 @@ function mover(road,car,o={}){const L=road.getTotalLength();let cur=0,raf=0;
 function rTicket(el){
  el.innerHTML=`<div class="lead"><h1>Thanksgrilling at 1,803 feet</h1><p>No turkey this year. Dosa, rib eyes, chai and the very top of New Jersey. Each chapter has one glowing thing to tap, then hit Next.</p></div>
  <div class="ticket${st.punched?' punched':''}" id="tk"><div class="tk-main"><span class="tk-k">Thursday road trip pass</span><b class="tk-t">Dera, Jackson Heights to High Point and back</b><div class="tk-g"><div><span>Date</span><b>Thu, Nov 26</b></div><div><span>Departs</span><b>8:00 AM</b></div><div><span>Summit</span><b>1,803 ft</b></div><div><span>Back</span><b>About 5:15 PM</b></div></div><span class="tk-by">Planned by ${ME} and ${CO}</span></div><button class="tk-stub${st.punched?'':' todo'}" id="punch" aria-pressed="${st.punched}"><span class="hole"></span><b>${st.punched?'Punched':'Tap to punch'}</b></button></div>
- <div class="cdw"><span id="cdl">Wheels up in</span><div class="count" id="cd"></div></div>`;
+ <div class="cdw"><span id="cdl">Wheels up in</span><div class="count" id="cd"></div></div>${calBlock()}`;
  cd();
- $('#punch',el).addEventListener('click',()=>{if(st.punched)return;st.punched=true;save();$('#tk',el).classList.add('punched');const b=$('#punch',el);b.classList.remove('todo');$('b',b).textContent='Punched';done('Ticket punched. Tap Next.')});
+ $('#punch',el).addEventListener('click',()=>{if(st.punched)return;sfx('punch');st.punched=true;save();$('#tk',el).classList.add('punched');const b=$('#punch',el);b.classList.remove('todo');$('b',b).textContent='Punched';done('Ticket punched. Tap Next.')});
 }
 
 /* 2 crew */
@@ -339,16 +375,16 @@ function rCrew(el){
  const card=([n,r],i,f)=>{const role=roleOf(r)[0];return `<button class="fc${f?' fl':''}" data-i="${i}" type="button" aria-label="${esc(n)}, ${role}"><span class="in"><span class="f"><b>?</b><span>${esc(n)}</span></span><span class="bk"><span>${esc(n)}</span><em>${role}</em><small>${roleOf(r)[1]}</small></span></span></button>`};
  const cards=f=>{const c=st.crew||[];$('#cards',el).innerHTML=c.length?c.map((x,i)=>card(x,i,f)).join(''):''};
  cards(true);
- const deal=()=>{const names=$('#names',el).value.split(',').map(s=>s.trim()).filter(Boolean).slice(0,10);if(names.length<1){toast('Add at least one name.');return}st.names=$('#names',el).value;const idx=ROLES.map((_,i)=>i);for(let i=idx.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]]}let k=0;st.crew=ordered(names.map((n,i)=>[n,i===0?-1:n.toLowerCase()===CO.toLowerCase()?-2:idx[(k++)%idx.length]]));save();const sp=$('#spin',el);sp.textContent='Deal again';sp.classList.remove('todo');cards(false);$$('.fc',el).forEach((b,i)=>later(()=>b.classList.add('fl'),250+i*300));done('Roles dealt. Tap Next.')};
+ const deal=()=>{const names=$('#names',el).value.split(',').map(s=>s.trim()).filter(Boolean).slice(0,10);if(names.length<1){toast('Add at least one name.');return}st.names=$('#names',el).value;const idx=ROLES.map((_,i)=>i);for(let i=idx.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]]}let k=0;st.crew=ordered(names.map((n,i)=>[n,i===0?-1:n.toLowerCase()===CO.toLowerCase()?-2:idx[(k++)%idx.length]]));save();const sp=$('#spin',el);sp.textContent='Deal again';sp.classList.remove('todo');cards(false);$$('.fc',el).forEach((b,i)=>later(()=>{b.classList.add('fl');sfx('flip')},250+i*300));done('Roles dealt. Tap Next.')};
  $('#spin',el).addEventListener('click',deal);
  $('#names',el).addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();deal()}});
- $('#cards',el).addEventListener('click',e=>{const b=e.target.closest('.fc');if(b)b.classList.toggle('fl')});
+ $('#cards',el).addEventListener('click',e=>{const b=e.target.closest('.fc');if(b){b.classList.toggle('fl');sfx('flip')}});
 }
 
 /* 3 playlist */
 function rPlay(el){
  el.innerHTML=`<div class="split"><div class="vinyl${st.pl?' spin':''}" id="vin"><svg viewBox="0 0 300 300" aria-hidden="true"><circle cx="150" cy="150" r="140" fill="#111"/>${[...Array(9)].map((_,i)=>`<circle cx="150" cy="150" r="${128-i*9}" fill="none" stroke="#262626" stroke-width="2"/>`).join('')}<path d="M150 22 A128 128 0 0 1 268 108" stroke="#3a3a3a" stroke-width="6" fill="none" stroke-linecap="round"/><circle cx="150" cy="150" r="48" fill="#ff6a3d"/><circle cx="150" cy="150" r="48" fill="none" stroke="#fff" stroke-width="2" opacity=".5"/><text x="150" y="146" text-anchor="middle" font-size="13" fill="#2a0f05">Thanksgrilling</text><text x="150" y="164" text-anchor="middle" font-size="11" fill="#2a0f05">${ME}'s mix</text><circle cx="150" cy="150" r="5" fill="#111"/></svg></div><div><div class="lead"><h2>The road trip playlist</h2><p>Join the crew playlist on YouTube Music and drop in a song or two for the drive.</p></div><div class="cta"><a class="btn${st.pl?' done':' todo'}" id="plj" href="${esc(PL)}" target="_blank" rel="noopener">Join the playlist on YouTube Music</a></div><p class="note" id="now">${st.pl?'You are on the playlist. The DJ still has final say on skips.':'It opens in YouTube Music. Come back here after.'}</p></div></div>`;
- $('#plj',el).addEventListener('click',()=>{if(st.pl)return;st.pl=true;save();const b=$('#plj',el);b.classList.remove('todo');b.classList.add('done');$('#vin',el).classList.add('spin');$('#now',el).textContent='You are on the playlist. The DJ still has final say on skips.';done('You are on the playlist. Tap Next.')});
+ $('#plj',el).addEventListener('click',()=>{if(st.pl)return;sfx('vinyl');st.pl=true;save();const b=$('#plj',el);b.classList.remove('todo');b.classList.add('done');$('#vin',el).classList.add('spin');$('#now',el).textContent='You are on the playlist. The DJ still has final say on skips.';done('You are on the playlist. Tap Next.')});
 }
 
 /* 4 route tour */
@@ -371,7 +407,7 @@ function rMap(el){
   mv.at(target(st.sel))};
  const info=()=>{const box=$('#info',el);if(st.sel<0){box.innerHTML='<h3>Your day, stop by stop</h3><p class="pl">The tour plays by itself. Sit back and watch.</p>';return}const s=view(st.sel);box.innerHTML=`<div class="ct"><span class="no">${st.sel+1}</span><span class="tm">${s.time}<small>${s.ap}</small></span></div><h3>${s.name}</h3><p class="pl">${s.place}</p>${s.roads?`<div class="roads">${s.roads.map(r=>shield(r[0],r[1])).join('<span aria-hidden="true">›</span>')}</div>`:''}<p class="bd">${s.body}</p><p class="note"><b>Tip</b> ${s.tip}</p><a class="lnk" href="${mapq(s.q)}" target="_blank" rel="noopener">Open in Google Maps ›</a>`};
  const bar=()=>{$('#tl',el).textContent=playing?(st.sel<0?'Starting the tour':`Touring stop ${st.sel+1} of 9`):st.tour?'Tour complete. Tap any pin to look again.':'Starting the tour';$('#tm',el).style.width=(st.tour&&!playing?100:Math.max(0,st.sel+1)/9*100)+'%';const b=$('#tb',el);b.textContent=playing?'Skip to the end':'Replay the tour';b.classList.toggle('todo',false)};
- const pick=i=>{st.sel=i;seen.add(i);save();$$('.pin',svg).forEach(g=>{const k=+g.dataset.i;g.classList.toggle('sel',k===i);g.classList.toggle('done',seen.has(k))});if(mv)mv.anim(target(i),900);info();bar()};
+ const pick=i=>{sfx('pop');st.sel=i;seen.add(i);save();$$('.pin',svg).forEach(g=>{const k=+g.dataset.i;g.classList.toggle('sel',k===i);g.classList.toggle('done',seen.has(k))});if(mv)mv.anim(target(i),900);info();bar()};
  const finish=()=>{timers.forEach(clearTimeout);timers=[];playing=false;S.forEach((_,i)=>seen.add(i));pick(8);if(!st.tour){st.tour=true;save();done('Tour done. Tap Next.')}bar()};
  const play=()=>{timers.forEach(clearTimeout);timers=[];playing=true;st.sel=-1;bar();S.forEach((_,i)=>later(()=>{pick(i);if(i===8)later(finish,900)},500+i*1600))};
  $('#tb',el).addEventListener('click',()=>playing?finish():play());
@@ -396,7 +432,7 @@ function rDosa(el){
  el.innerHTML=`<div class="split"><div class="plate"><svg viewBox="0 0 320 320" id="plate" role="img" aria-label="Breakfast plate"></svg></div><div><div class="lead"><h2>Dosa House breakfast</h2><p>9:00 AM at 809 Newark Ave, Journal Square. Tap your favorite dish to put it on the plate. Pick as many as you like.</p></div><div class="menu" id="menu"></div><a class="lnk" href="${mapq(S[1].q)}" target="_blank" rel="noopener">Open Dosa House in Google Maps ›</a></div></div>`;
  const paint=()=>{const need=!st.order.length;$('#menu',el).innerHTML=MENU.map(m=>{const on=st.order.includes(m[0]);return `<button class="mi${need?' todo':''}" data-k="${m[0]}" aria-pressed="${on}"><b>${m[1]}</b><span>${m[2]}</span></button>`}).join('');$('#plate',el).innerHTML=plateSVG()};
  paint();
- $('#menu',el).addEventListener('click',e=>{const b=e.target.closest('.mi');if(!b)return;const k=b.dataset.k,i=st.order.indexOf(k),first=!st.order.length;if(i<0)st.order.push(k);else st.order.splice(i,1);save();paint();refresh();if(first&&i<0)toast('Great pick. Tap Next, or add more.')});
+ $('#menu',el).addEventListener('click',e=>{const b=e.target.closest('.mi');if(!b)return;const k=b.dataset.k,i=st.order.indexOf(k),first=!st.order.length;sfx(i<0?'pop':'tap');if(i<0)st.order.push(k);else st.order.splice(i,1);save();paint();refresh();if(first&&i<0)toast('Great pick. Tap Next, or add more.')});
 }
 
 /* 6 climb */
@@ -408,7 +444,7 @@ function rClimb(el){
  const mv=mover($('#croad',el),$('#ccar',el),{scale:.8});let busy=false,seg=st.climb===3?3:0;
  const paint=()=>{$('#shr',el).innerHTML=R.map((x,i)=>`<div class="shb${i<seg?' ok':busy&&i===seg?' on':''}">${shield(x[0],x[1])}<span>${i<seg?'Driven':x[2]}</span></div>`).join('')};
  mv.at(seg?mv.L:0);paint();
- $('#go',el).addEventListener('click',()=>{if(busy)return;busy=true;seg=0;mv.at(0);$('#alt',el).hidden=true;const b=$('#go',el);b.classList.remove('todo');b.textContent='Climbing';paint();
+ $('#go',el).addEventListener('click',()=>{if(busy)return;busy=true;sfx('engine',4.1);seg=0;mv.at(0);$('#alt',el).hidden=true;const b=$('#go',el);b.classList.remove('todo');b.textContent='Climbing';paint();
   const leg=i=>{if(i>=3){busy=false;$('#alt',el).hidden=false;b.textContent='Ride it again';b.classList.add('gh');paint();if(st.climb!==3){st.climb=3;save();done('Summit reached. Tap Next.')}return}paint();mv.anim((i+1)*mv.L/3,1300,()=>{seg=i+1;leg(i+1)})};leg(0)});
 }
 
@@ -420,7 +456,7 @@ function rSummit(el){
  const paint=()=>{const left=4-st.fog.length;$('#ovl',el).innerHTML=left?`Tap the clouds<em>${left} left</em>`:'Fog cleared';$('#ovl',el).hidden=!left&&false;const nx=PF.findIndex((_,i)=>!st.fog.includes(i));$('#hand',el).innerHTML=nx<0?'':`<g transform="translate(${PF[nx][0]+20} ${PF[nx][1]+40})"><g class="hand">${HAND}</g></g>`;
   $('#rev',el).innerHTML=left?`<p class="pl">${left} ${left===1?'cloud':'clouds'} to go. Look for the white puffs on the picture.</p>`:'<h3>Top of New Jersey</h3><p>High Point rises 1,803 feet, the highest elevation in the state. On a clear day the view runs over farms, forest and valleys in three states. The monument interior is closed for the season, so you will walk the grounds.</p>'};
  paint();
- const clear=g=>{const i=+g.dataset.i;if(st.fog.includes(i))return;st.fog.push(i);save();g.classList.add('gone',PF[i][2]?'r':'l');paint();refresh();if(st.fog.length===4)toast('Fog cleared. Tap Next.')};
+ const clear=g=>{const i=+g.dataset.i;if(st.fog.includes(i))return;sfx('poof');st.fog.push(i);save();g.classList.add('gone',PF[i][2]?'r':'l');paint();refresh();if(st.fog.length===4)toast('Fog cleared. Tap Next.')};
  const s=$('#sum',el);s.addEventListener('click',e=>{const g=e.target.closest('.puff');if(g)clear(g)});
  s.addEventListener('keydown',e=>{const g=e.target.closest('.puff');if(g&&(e.key==='Enter'||e.key===' ')){e.preventDefault();clear(g)}});
 }
@@ -432,7 +468,7 @@ function rWx(el){
  const C=[[false,'We grill at the lake','Umbrella over the grill, steak BBQ at the Lake Marcia shelter.'],[true,'Chai at the lake, steaks at home','If it pours, chai under the shelter and rib eyes on the grill back home.']];
  const paint=()=>{$('#ch',el).innerHTML=C.map((c,i)=>`<button class="choice${st.rain===null?' todo':''}" data-i="${i}" aria-pressed="${st.rain===c[0]}"><b>${c[1]}</b><span>${c[2]}</span></button>`).join('')};
  paint();
- $('#ch',el).addEventListener('click',e=>{const b=e.target.closest('.choice');if(!b)return;st.rain=C[+b.dataset.i][0];save();document.body.classList.toggle('rainy',st.rain===true);paint();done(st.rain?'Rain plan it is. Tap Next.':'Grill plan it is. Tap Next.')});
+ $('#ch',el).addEventListener('click',e=>{const b=e.target.closest('.choice');if(!b)return;st.rain=C[+b.dataset.i][0];sfx(st.rain?'rain':'sizzle');save();document.body.classList.toggle('rainy',st.rain===true);paint();done(st.rain?'Rain plan it is. Tap Next.':'Grill plan it is. Tap Next.')});
 }
 
 /* 9 camp */
@@ -442,7 +478,7 @@ function rSetup(el){
  el.innerHTML=`<div class="lead"><h2>Camp at Lake Marcia</h2><p>${ME} and ${CO} have the whole setup. Tap the button and watch camp build itself.</p></div><div class="sbox"><svg viewBox="0 0 600 300" id="camp" role="img" aria-label="Lake Marcia picnic shelter"></svg></div><div class="stat" id="its"></div><div class="cta"><button class="btn${st.camp?' gh':' todo'}" id="build">${st.camp?'Build it again':'Set up camp'}</button></div>`;
  const paint=()=>{$('#camp',el).innerHTML=scene();$('#its',el).innerHTML=SET.map(([k,n])=>`<span class="${placed.includes(k)?'on':''}">${placed.includes(k)?CHK:''}${n}</span>`).join('')};
  paint();
- $('#build',el).addEventListener('click',()=>{if(busy)return;busy=true;placed=[];paint();const b=$('#build',el);b.classList.remove('todo');b.textContent='Setting up';SET.forEach(([k],i)=>later(()=>{placed.push(k);paint();if(i===SET.length-1){busy=false;b.textContent='Build it again';b.classList.add('gh');if(!st.camp){st.camp=true;save();done('Camp is set. Tap Next.')}}},400+i*600))});
+ $('#build',el).addEventListener('click',()=>{if(busy)return;busy=true;sfx('tap');placed=[];paint();const b=$('#build',el);b.classList.remove('todo');b.textContent='Setting up';SET.forEach(([k],i)=>later(()=>{placed.push(k);sfx('pop');paint();if(i===SET.length-1){busy=false;b.textContent='Build it again';b.classList.add('gh');if(!st.camp){st.camp=true;save();done('Camp is set. Tap Next.')}}},400+i*600))});
 }
 
 /* 10 grill */
@@ -451,7 +487,7 @@ function rGrill(el){
  el.innerHTML=`<div class="split"><div class="steak" id="stk">${steak(st.gd===null?'#c95a68':DON[st.gd][2])}</div><div><div class="lead"><h2>How do you like your rib eye?</h2><p>${st.rain?`Rain plan: ${ME} grills these at home tonight.`:`${ME} is on the grill at Lake Marcia.`} Just tap your pick.</p></div><div class="choices" id="gd"></div><p class="big" id="gh"${st.gd===null?' hidden':''}></p></div></div>`;
  const paint=()=>{$('#gd',el).innerHTML=DON.map((d,i)=>`<button class="choice${st.gd===null?' todo':''}" data-d="${i}" aria-pressed="${st.gd===i}"><b>${d[0]}</b><span>Off the grill at ${d[1]}</span></button>`).join('');if(st.gd!==null){$('#gh',el).hidden=false;$('#gh',el).textContent=`${DON[st.gd][0]} it is. ${ME} has yours.`;$('.meat',el).setAttribute('fill',DON[st.gd][2])}};
  paint();
- $('#gd',el).addEventListener('click',e=>{const b=e.target.closest('[data-d]');if(!b)return;const first=st.gd===null;st.gd=+b.dataset.d;save();paint();if(first)done('Order placed. Tap Next.');else refresh()});
+ $('#gd',el).addEventListener('click',e=>{const b=e.target.closest('[data-d]');if(!b)return;const first=st.gd===null;sfx('sizzle');st.gd=+b.dataset.d;save();paint();if(first)done('Order placed. Tap Next.');else refresh()});
 }
 
 /* 11 hawk's nest */
@@ -462,7 +498,7 @@ function rHawk(el){
  const mv=mover($('.hr',el),$('#hcar',el),{flip:true,scale:.8});let busy=false;
  const pol=()=>{$('#pol',el).innerHTML=st.hawk?`<div class="pol"><svg viewBox="0 0 600 340" aria-hidden="true">${hawkBase()}</svg><p>Hawk's Nest, Route 97</p></div>`:''};
  mv.at(st.hawk?mv.L:0);pol();
- $('#hgo',el).addEventListener('click',()=>{if(busy)return;busy=true;const b=$('#hgo',el);b.classList.remove('todo');b.textContent='Driving';mv.at(0);mv.anim(mv.L,3600,()=>{const f=$('#fl',el);f.classList.remove('go');void f.offsetWidth;f.classList.add('go');busy=false;b.textContent='Ride it again';b.classList.add('gh');const first=!st.hawk;st.hawk=true;save();pol();if(first)done('Photo snapped. Tap Next.')})});
+ $('#hgo',el).addEventListener('click',()=>{if(busy)return;busy=true;const b=$('#hgo',el);b.classList.remove('todo');b.textContent='Driving';mv.at(0);sfx('engine',3.6);mv.anim(mv.L,3600,()=>{const f=$('#fl',el);f.classList.remove('go');void f.offsetWidth;f.classList.add('go');sfx('shutter');busy=false;b.textContent='Ride it again';b.classList.add('gh');const first=!st.hawk;st.hawk=true;save();pol();if(first)done('Photo snapped. Tap Next.')})});
 }
 
 /* 12 port jervis */
@@ -472,8 +508,8 @@ function rPJ(el){
  el.innerHTML=`<div class="lead"><h2>Port Jervis</h2><p>Two quick stops before sunset. One tap each.</p></div><div class="two"><div class="pp${st.peter?' up':''}" id="pk"><h3>Point Peter overlook</h3><div class="sbox" style="margin-top:6px"><svg viewBox="0 0 400 210" role="img" aria-label="View over Port Jervis"><defs>${sky('psky','#a9c3d0','#f0f4f1')}</defs><rect width="400" height="210" fill="url(#psky)"/><path d="M0 110 C80 80 160 96 240 74 C300 58 350 70 400 64 L400 210 L0 210Z" fill="#9db8ad"/><polygon points="338,66 344,66 342,44 341,40 340,44" fill="#eef3ef"/><path d="M0 150 C100 130 200 160 400 128 L400 146 C220 176 100 150 0 168Z" fill="#8cc0cf"/>${houses}<path d="M0 210 L0 196 C100 186 260 192 400 182 L400 210Z" fill="#2f5f50"/><rect class="veil" width="400" height="210" fill="#e9efeb"/><text class="veil" x="200" y="112" text-anchor="middle" font-size="20" fill="#4f6158">The view is up the hill</text></svg></div><p class="note" id="pnote">${st.peter?'Port Jervis below, the Delaware winding through, and High Point Monument on the far ridge.':'Skyline Drive winds up to the lookout.'}</p><div class="cta"><button class="btn${st.peter?' done':' todo'}" id="drive">${st.peter?'View unlocked':'Drive up Skyline Drive'}</button></div></div><div class="pp"><h3>Tri States Monument</h3><div class="sbox" style="margin-top:6px"><svg viewBox="0 0 400 260" role="img" aria-label="Where three states meet">${Object.entries(RG).map(([k,r])=>`<path class="reg${st.walk?' v':''}" id="r-${k}" d="${r[1]}" fill="${r[4]}"/>`).join('')}<path d="M60 0 C150 60 200 110 210 130 C220 160 150 210 120 260" fill="none" stroke="#7fb7c9" stroke-width="9"/><path d="M330 0 C290 60 240 100 210 130" fill="none" stroke="#7fb7c9" stroke-width="6"/>${Object.values(RG).map(r=>`<text x="${r[2]}" y="${r[3]}" text-anchor="middle" font-size="17" fill="#12271f">${r[0]}</text>`).join('')}<rect x="204" y="124" width="12" height="12" fill="#12271f"/><g class="walker" id="wk" transform="translate(210 160)"><circle cx="0" cy="-22" r="7" fill="#ff6a3d" stroke="#fff" stroke-width="2"/><path d="M-8 4 L0 -14 L8 4Z" fill="#ff6a3d" stroke="#fff" stroke-width="2"/></g></svg></div><p class="note" id="tnote">${st.walk?'You stood in three states at once.':'Where the Neversink meets the Delaware.'}</p><div class="cta"><button class="btn${st.walk?' done':' todo'}" id="walk">${st.walk?'Three states done':'Walk all three states'}</button></div></div></div>`;
  let busy=false;
  const chk=m=>{refresh();if(st.peter&&st.walk)toast('Both stops done. Tap Next.');else toast(m)};
- $('#drive',el).addEventListener('click',()=>{if(st.peter)return;st.peter=true;save();$('#pk',el).classList.add('up');const b=$('#drive',el);b.classList.remove('todo');b.classList.add('done');b.textContent='View unlocked';$('#pnote',el).textContent='Port Jervis below, the Delaware winding through, and High Point Monument on the far ridge.';chk('View unlocked. Now the three states.')});
- $('#walk',el).addEventListener('click',()=>{if(busy||st.walk)return;busy=true;const b=$('#walk',el);b.classList.remove('todo');b.textContent='Walking';['pa','ny','nj'].forEach((k,i)=>later(()=>{$('#r-'+k,el).classList.add('v');$('#wk',el).setAttribute('transform',`translate(${RG[k][2]} ${RG[k][3]+34})`);$('#tnote',el).textContent=`Now standing in ${RG[k][0]}.`;if(i===2)later(()=>{busy=false;st.walk=true;save();b.classList.add('done');b.textContent='Three states done';$('#tnote',el).textContent='You stood in three states at once.';chk('Three states at once. Now Point Peter.')},700)},300+i*900))});
+ $('#drive',el).addEventListener('click',()=>{if(st.peter)return;sfx('engine',1.6);st.peter=true;save();$('#pk',el).classList.add('up');const b=$('#drive',el);b.classList.remove('todo');b.classList.add('done');b.textContent='View unlocked';$('#pnote',el).textContent='Port Jervis below, the Delaware winding through, and High Point Monument on the far ridge.';chk('View unlocked. Now the three states.')});
+ $('#walk',el).addEventListener('click',()=>{if(busy||st.walk)return;busy=true;const b=$('#walk',el);b.classList.remove('todo');b.textContent='Walking';['pa','ny','nj'].forEach((k,i)=>later(()=>{$('#r-'+k,el).classList.add('v');sfx('step');$('#wk',el).setAttribute('transform',`translate(${RG[k][2]} ${RG[k][3]+34})`);$('#tnote',el).textContent=`Now standing in ${RG[k][0]}.`;if(i===2)later(()=>{busy=false;st.walk=true;save();b.classList.add('done');b.textContent='Three states done';$('#tnote',el).textContent='You stood in three states at once.';chk('Three states at once. Now Point Peter.')},700)},300+i*900))});
 }
 
 /* 13 bring */
@@ -493,7 +529,7 @@ function rQuiz(el){
   $('#qc',el).innerHTML=`${dots}<p class="qn">Question ${st.qi+1} of ${n}</p><h3>${q[0]}</h3><div class="opts">${q[1].map((o,k)=>`<button class="opt${a===undefined?'':k===q[2]?' right':k===a?' wrong':''}" data-k="${k}"${a!==undefined?' disabled':''}>${o}</button>`).join('')}</div>${a!==undefined?`<p class="expl"><b>${a===q[2]?'Correct.':'Close.'}</b> ${q[3]}</p>`:''}<div class="qnav"><button class="qb" data-a="prev"${st.qi===0?' disabled':''}>‹ Back</button><button class="qb pri" data-a="skip">${a!==undefined?(st.qi===n-1?'See score ›':'Next question ›'):'Skip ›'}</button></div>`};
  const goq=i=>{clearTimeout(tmr);st.qi=Math.max(0,Math.min(n,i));save();paint()};
  paint();
- $('#qc',el).addEventListener('click',e=>{const o=e.target.closest('.opt');if(o){if(st.quiz[st.qi]!==undefined)return;st.quiz[st.qi]=+o.dataset.k;save();paint();const at=st.qi;clearTimeout(tmr);tmr=setTimeout(()=>{if(st.qi===at)goq(at+1)},1400);return}
+ $('#qc',el).addEventListener('click',e=>{const o=e.target.closest('.opt');if(o){if(st.quiz[st.qi]!==undefined)return;st.quiz[st.qi]=+o.dataset.k;sfx(st.quiz[st.qi]===QZ[st.qi][2]?'right':'wrong');save();paint();const at=st.qi;clearTimeout(tmr);tmr=setTimeout(()=>{if(st.qi===at)goq(at+1)},1400);return}
   const d=e.target.closest('.qd');if(d){goq(+d.dataset.j);return}
   const b=e.target.closest('.qb');if(!b)return;const a=b.dataset.a;if(a==='prev')goq(st.qi-1);else if(a==='skip')goq(st.qi+1);else if(a==='again'){st.quiz={};goq(0)}else if(a==='end'){st.max=Math.max(st.max,st.at+1);go(st.at+1,1)}});
 }
@@ -502,8 +538,9 @@ function rQuiz(el){
 function rEnd(el){
  const crew=(st.crew||[]).map(([n,r])=>`${esc(n)}: ${roleOf(r)[0]}`).join(', ')||'Not dealt';
  const food=st.order.map(k=>MENU.find(m=>m[0]===k)[1]).join(', ')||'Chef picks';
- el.innerHTML=`<div class="lead"><h1>Road ready</h1><p>That is the whole trip. ${ME} will see you outside Dera at 8 sharp. Bring chai, warm clothes and a smile.</p></div><div class="cdw"><span id="cdl">Wheels up in</span><div class="count" id="cd"></div></div><div class="endg"><div class="pp"><h3>The day</h3><ol class="mini">${S.map((_,i)=>{const v=view(i);return `<li><b>${v.time}<small>${v.ap}</small></b><span>${v.name}</span></li>`}).join('')}</ol></div><div class="pp"><h3>Your picks</h3><dl class="picks"><div><dt>BBQ call</dt><dd>${st.rain?'Chai at the lake, steaks at home':'Steak BBQ at the lake'}</dd></div><div><dt>Breakfast</dt><dd>${food}</dd></div><div><dt>Rib eye</dt><dd>${st.gd!==null?DON[st.gd][0]:'Chef picks'}</dd></div><div><dt>Crew</dt><dd>${crew}</dd></div></dl><h3>Navigate</h3><div class="legs">${LEGS.map(l=>`<a class="leg" href="${l[2]}" target="_blank" rel="noopener"><span><b>${l[0]}</b><span>${l[1]}</span></span><em>Go ›</em></a>`).join('')}<a class="leg" href="${esc(PL)}" target="_blank" rel="noopener"><span><b>Road trip playlist</b><span>YouTube Music</span></span><em>Play ›</em></a></div></div></div><div class="cta"><button class="btn gh" id="replay">Replay from the start</button></div>`;
+ el.innerHTML=`<div class="lead"><h1>Road ready</h1><p>That is the whole trip. ${ME} will see you outside Dera at 8 sharp. Bring chai, warm clothes and a smile.</p></div><div class="cdw"><span id="cdl">Wheels up in</span><div class="count" id="cd"></div></div>${calBlock()}<div class="endg"><div class="pp"><h3>The day</h3><ol class="mini">${S.map((_,i)=>{const v=view(i);return `<li><b>${v.time}<small>${v.ap}</small></b><span>${v.name}</span></li>`}).join('')}</ol></div><div class="pp"><h3>Your picks</h3><dl class="picks"><div><dt>BBQ call</dt><dd>${st.rain?'Chai at the lake, steaks at home':'Steak BBQ at the lake'}</dd></div><div><dt>Breakfast</dt><dd>${food}</dd></div><div><dt>Rib eye</dt><dd>${st.gd!==null?DON[st.gd][0]:'Chef picks'}</dd></div><div><dt>Crew</dt><dd>${crew}</dd></div></dl><h3>Navigate</h3><div class="legs">${LEGS.map(l=>`<a class="leg" href="${l[2]}" target="_blank" rel="noopener"><span><b>${l[0]}</b><span>${l[1]}</span></span><em>Go ›</em></a>`).join('')}<a class="leg" href="${esc(PL)}" target="_blank" rel="noopener"><span><b>Road trip playlist</b><span>YouTube Music</span></span><em>Play ›</em></a></div></div></div><div class="cta"><button class="btn gh" id="replay">Replay from the start</button></div>`;
  cd();
+ later(()=>sfx('fanfare'),350);
  if(!reduce){const cols=['#ff6a3d','#7fb7c9','#f5f7f2','#2f8f67','#ffc35a'];const r=rng(Date.now()%9999+1);const bits=[];for(let i=0;i<46;i++){const c=document.createElement('i');c.className='cf';c.style.left=(r()*100)+'vw';c.style.background=cols[i%5];c.style.animationDelay=(r()*.8)+'s';document.body.appendChild(c);bits.push(c)}later(()=>bits.forEach(b=>b.remove()),4000);cleanup.push(()=>bits.forEach(b=>b.remove()))}
  $('#replay',el).addEventListener('click',()=>{const names=st.names;st=Object.assign({},DEF,{names,order:[],fog:[],quiz:{}});save();document.body.classList.remove('rainy');go(0,-1)});
 }
@@ -538,8 +575,13 @@ function refresh(){const sc=SC[st.at],ts=sc.tasks(),ok=ts.every(t=>t[1]),last=st
  $('#bar').innerHTML=SC.map((s,i)=>`<button class="${i<st.max&&i!==st.at?'dn':''}${i===st.at?' cur':''}" data-g="${i}" aria-label="Chapter ${i+1}, ${s.t}"${i>st.max?' disabled':''}></button>`).join('')}
 function go(i,d){i=Math.max(0,Math.min(SC.length-1,i));timers.forEach(clearTimeout);timers=[];cleanup.forEach(f=>{try{f()}catch(e){}});cleanup=[];st.at=i;save();const el=document.createElement('section');el.className='scr'+(d<0?' bl':'');stage.replaceChildren(el);stage.scrollTop=0;SC[i].r(el);refresh();requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('on')))}
 let nudged=-1;
-$('#next').addEventListener('click',()=>{const ts=SC[st.at].tasks();if(!ts.every(t=>t[1])){if(nudged===st.at&&SC[st.at].auto){nudged=-1;SC[st.at].auto();refresh();if(SC[st.at].tasks().every(t=>t[1]))toast('All set. Tap Next.');return}nudged=st.at;const nx=$('#next');nx.classList.remove('shake');void nx.offsetWidth;nx.classList.add('shake');stage.classList.add('nudge');setTimeout(()=>stage.classList.remove('nudge'),1800);nx.innerHTML='Tap again and we will do it for you';toast('Tap the glowing orange item, or tap Next again.');return}nudged=-1;st.max=Math.max(st.max,st.at+1);go(st.at+1,1)});
-$('#back').addEventListener('click',()=>go(st.at-1,-1));
+$('#next').addEventListener('click',()=>{const ts=SC[st.at].tasks();if(!ts.every(t=>t[1])){sfx('nope');if(nudged===st.at&&SC[st.at].auto){nudged=-1;SC[st.at].auto();refresh();if(SC[st.at].tasks().every(t=>t[1]))toast('All set. Tap Next.');return}nudged=st.at;const nx=$('#next');nx.classList.remove('shake');void nx.offsetWidth;nx.classList.add('shake');stage.classList.add('nudge');setTimeout(()=>stage.classList.remove('nudge'),1800);nx.innerHTML='Tap again and we will do it for you';toast('Tap the glowing orange item, or tap Next again.');return}nudged=-1;sfx('next');st.max=Math.max(st.max,st.at+1);go(st.at+1,1)});
+$('#back').addEventListener('click',()=>{sfx('back');go(st.at-1,-1)});
+const SON='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>',SOFF='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>';
+const sndUI=()=>{const b=$('#snd');b.innerHTML=SND.on?SON:SOFF;b.setAttribute('aria-pressed',String(SND.on));b.setAttribute('aria-label',SND.on?'Sound on':'Sound off')};
+$('#snd').addEventListener('click',()=>{SND.toggle();sndUI();if(SND.on)sfx('pop');toast(SND.on?'Sound on':'Sound off')});
+sndUI();
+document.addEventListener('pointerdown',()=>{if(SND.on)SND.unlock()},{passive:true});
 $('#bar').addEventListener('click',e=>{const b=e.target.closest('[data-g]');if(b&&!b.disabled){const i=+b.dataset.g;if(i!==st.at)go(i,i<st.at?-1:1)}});
 
 const T0=Date.parse('2026-11-26T08:00:00-05:00'),T1=Date.parse('2026-11-26T17:15:00-05:00');
